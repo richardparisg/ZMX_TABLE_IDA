@@ -1,0 +1,22 @@
+*&----------------------------- ----------------------------------------*
+*& Report Z_ALV_TABLE_IDA
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT Z_ALV_TABLE_IDA.
+
+*chequea la compatibildiad de la base de datos
+CHECK cl_salv_gui_table_ida=>db_capabilities( )->is_table_supported(
+iv_ddic_table_name = 'VBAK').
+
+*Crea IDA
+DATA(o_ida) = cl_salv_gui_table_ida=>create(
+                iv_table_name         = 'VBAK').
+
+*Establecer filas maximas recomendadas
+IF cl_salv_gui_table_ida=>db_capabilities( )->is_max_rows_recommended( ).
+ o_ida->set_maximum_number_of_rows( iv_number_of_rows = 2000 ).
+ENDIF.
+
+*display
+o_ida->fullscreen( )->display( ).
