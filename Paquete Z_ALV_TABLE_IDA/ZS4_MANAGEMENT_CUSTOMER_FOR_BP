@@ -19,4 +19,5 @@ IF cl_salv_gui_table_ida=>db_capabilities( )->is_max_rows_recommended( ).
 ENDIF.
 
 *display
+
 o_ida->fullscreen( )->display( ).
