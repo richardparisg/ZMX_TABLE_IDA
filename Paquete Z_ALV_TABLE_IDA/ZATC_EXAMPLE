@@ -1,0 +1,151 @@
+*&---------------------------------------------------------------------*
+*& Report zatc_example
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zatc_example.
+
+PARAMETERS p_selall
+TYPE abap_bool DEFAULT 'X'.
+
+PARAMETERS: p_bukrs TYPE bseg-bukrs,
+            p_belnr TYPE bseg-belnr,
+            p_gjahr TYPE bseg-gjahr,
+            p_matnr TYPE mara-matnr.
+
+
+CLASS lcl_atc_example DEFINITION.
+
+  PUBLIC SECTION.
+
+    METHODS run.
+
+ENDCLASS.
+
+CLASS lcl_atc_example IMPLEMENTATION.
+
+  METHOD run.
+
+    DATA:
+      lt_spfli  TYPE spfli_tab,
+      lv_flight TYPE sflight.
+
+    IF ( p_selall = abap_true ).
+
+      CALL FUNCTION 'READ_SPFLI_INTO_TABLE'
+        EXPORTING
+          id   = 'AA'
+        IMPORTING
+          itab = lt_spfli.
+
+    ENDIF.
+
+*    MESSAGE TEXT-001 TYPE 'I' ##NO_TEXT.
+
+*    MESSAGE TEXT-005 TYPE 'I'.
+
+    SELECT
+     FROM sflight
+     FIELDS carrid,connid,currency,fldate
+     WHERE  carrid = 'AA'
+     ORDER BY PRIMARY KEY
+     INTO TABLE @DATA(lv_flight2).
+
+
+
+* Quick Fix Append ORDER BY PRIMARY KEY to the SELECT statement
+* Transport ES4K902830 paquete de table ida alv
+* Replaced Code:
+*    SELECT * FROM mara INTO TABLE @DATA(it_mara) WHERE matnr = @p_matnr.
+
+    SELECT * FROM mara INTO TABLE @DATA(it_mara) WHERE matnr = @p_matnr
+     ORDER BY PRIMARY KEY .
+
+* End of Quick Fix
+
+
+    SELECT * FROM marc INTO TABLE @DATA(it_marc) WHERE matnr = @p_matnr.
+
+
+    READ TABLE it_mara INTO DATA(wa_mara) INDEX 1.
+
+DATA i_beg TYPE TABLE OF bseg .
+
+
+* Quick Fix Replace SELECT from table BSEG by API Call
+* Transport ES4K902830 paquete de table ida alv
+* Replaced Code:
+*    SELECT * FROM bseg  INTO TABLE i_beg
+*    WHERE bukrs = p_bukrs
+*    AND   belnr = p_belnr
+*    AND   gjahr = p_gjahr.
+
+DATA RLDNR_L74C4R61 TYPE RLDNR.
+CALL FUNCTION 'FAGL_GET_LEADING_LEDGER'
+  IMPORTING E_RLDNR = RLDNR_L74C4R61
+  EXCEPTIONS NOT_FOUND     = 1
+             MORE_THAN_ONE = 2.
+IF SY-SUBRC = 0.
+CALL FUNCTION 'FAGL_GET_GL_DOCUMENT'
+  EXPORTING
+    I_RLDNR = RLDNR_L74C4R61
+    I_BUKRS = P_BUKRS
+    I_BELNR = P_BELNR
+    I_GJAHR = P_GJAHR
+  IMPORTING
+    ET_BSEG = I_BEG
+  EXCEPTIONS NOT_FOUND = 1.
+ENDIF.
+IF SY-SUBRC <> 0 OR LINES( I_BEG ) = 0.
+  SY-SUBRC = 4.
+  SY-DBCNT = 0.
+ELSE.
+  SY-DBCNT = LINES( I_BEG ).
+ENDIF.
+
+* End of Quick Fix
+
+
+*    DATA(ls_beg) = NEW  cl_fins_acdoc_transform_util( ).
+*    DATA tt_acdoca TYPE acdoca.
+*    ls_beg->transform_bseg_to_acdoca(
+*      EXPORTING
+*        is_bseg            = i_beg
+**       iv_map_amt_wo_sign = 'X'
+*      CHANGING
+*        cs_acdoca          = tt_acdoca
+*    ).
+
+* End of Quick Fix
+
+
+    CALL FUNCTION 'GUI_DOWNLOAD'
+      EXPORTING
+        filename              = 'C:\Users\rparisgo\Documents\TERNIUM\almamaria.xls'
+        filetype              = 'ASC'
+        write_field_separator = '*'
+      TABLES
+        data_tab              = lv_flight2.
+
+
+    TRY.
+        cl_salv_table=>factory(
+          IMPORTING
+            r_salv_table   = DATA(ti_salida)
+          CHANGING
+            t_table        = lv_flight2 ).
+      CATCH cx_salv_msg INTO DATA(cx_salv).
+* gestionamos las excepciones que puedan suceder
+        DATA(gr_msg) = cx_salv->get_text( ).
+        MESSAGE gr_msg TYPE 'E'.
+    ENDTRY.
+
+    ti_salida->display( ).
+  ENDMETHOD.
+
+ENDCLASS.
+
+START-OF-SELECTION.
+
+  DATA(example) = NEW lcl_atc_example( ).
+  example->run( ).
