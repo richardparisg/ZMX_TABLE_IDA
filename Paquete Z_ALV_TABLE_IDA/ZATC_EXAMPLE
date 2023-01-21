@@ -14,6 +14,7 @@ PARAMETERS: p_bukrs TYPE bseg-bukrs,
             p_matnr TYPE mara-matnr.
 
 
+
 CLASS lcl_atc_example DEFINITION.
 
   PUBLIC SECTION.
